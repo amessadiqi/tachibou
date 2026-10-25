@@ -1,0 +1,85 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tachibou"
+description = "Local dashboard for managing independent automations."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dynamic = ["version"]
+keywords = ["automation", "fastapi", "sqlite"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Web Environment",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: System :: Monitoring",
+]
+dependencies = [
+  "alembic>=1.14",
+  "fastapi>=0.115",
+  "sqlalchemy>=2.0.36",
+  "uvicorn>=0.32",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx2>=2.16",
+  "pytest>=8.3",
+  "ruff>=0.8",
+]
+
+[project.scripts]
+tachibou = "tachibou.cli:main"
+
+[tool.hatch.version]
+path = "src/tachibou/__init__.py"
+
+# Wheel builds compile the frontend. Editable installs do not, so development does not need Node.js.
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/frontend",
+  "/tests",
+  "/.github",
+  "/hatch_build.py",
+  "/alembic.ini",
+  "/README.md",
+  "/LICENSE",
+  "/AGENTS.md",
+  "/pyproject.toml",
+]
+exclude = [
+  "/frontend/node_modules",
+  "/frontend/dist",
+  "/docs",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tachibou"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tachibou"]

@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
+  --color-paper: #f4f0e8;
+  --color-ink: #1c1916;
+  --color-moss: #1d6b4a;
+  --color-clay: #9a4632;
+  --color-line: #e3dacd;
+  --color-card: #fffcf7;
+}
+
+html {
+  background: var(--color-paper);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
