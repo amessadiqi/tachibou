@@ -8,18 +8,19 @@ Tâchibou does not replace those automations or orchestrate workflows between th
 
 ## Current development status
 
-Version 0.1 is in early development. The repository currently provides the project foundation:
+Version 0.1 is in early development. You can register automations that already exist on this computer, edit their settings, and unregister them without changing their files.
 
-- An installable Python package and `tachibou` command
-- A local FastAPI service bound to `127.0.0.1`
-- A React interface
+What works:
+
+- An installable `tachibou` command and a local FastAPI service bound to `127.0.0.1`
+- A React interface for the automation list, registration, and detail page
 - SQLite persistence with Alembic migrations
+- Validation for required fields, with a clear report when an executable, working directory, or referenced file cannot be found
 
-Windows is the intended runtime. This foundation also runs on other systems so it can be developed and tested before Task Scheduler integration.
+Windows is the intended runtime. The current build also runs on other systems so it can be developed and tested before Task Scheduler integration.
 
 These capabilities are planned and are not implemented yet:
 
-- Registering and editing automations
 - Manual execution and captured logs
 - Execution history
 - Windows Task Scheduler integration

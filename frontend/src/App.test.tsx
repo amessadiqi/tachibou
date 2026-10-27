@@ -7,18 +7,32 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("App", () => {
-  it("shows the service status returned by the API", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
+function mockFetch(healthOk: boolean, healthRejects = false) {
+  const fetchMock = vi.fn(async (input: RequestInfo) => {
+    const url = String(input);
+    if (healthRejects) {
+      throw new Error("offline");
+    }
+    if (url.startsWith("/api/automations")) {
+      return { ok: true, json: async () => [] };
+    }
+    return {
+      ok: healthOk,
       json: async () => ({
         status: "ok",
         name: "Tâchibou",
         version: "0.1.0",
         database: "ok",
       }),
-    });
-    vi.stubGlobal("fetch", fetchMock);
+    };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+describe("App", () => {
+  it("shows the service status returned by the API", async () => {
+    const fetchMock = mockFetch(true);
 
     render(<App />);
 
@@ -32,15 +46,15 @@ describe("App", () => {
   });
 
   it("shows a clear message when the API is unreachable", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    mockFetch(false, true);
 
     render(<App />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/cannot reach/i);
+    expect((await screen.findAllByRole("alert"))[0]).toHaveTextContent(/cannot reach/i);
   });
 
   it("reports an unexpected API response", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    mockFetch(false);
 
     render(<App />);
 

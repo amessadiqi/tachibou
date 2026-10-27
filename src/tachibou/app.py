@@ -2,24 +2,34 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Literal
 
-from fastapi import APIRouter, Depends, FastAPI, Request
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException
+from starlette.requests import Request
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles
 from starlette.types import Scope
 
 from tachibou import APP_NAME, __version__
+from tachibou.automations import (
+    NotFoundError,
+    RegistrationError,
+    not_found_handler,
+    registration_error_handler,
+)
+from tachibou.automations import (
+    router as automation_router,
+)
 from tachibou.config import get_settings
 from tachibou.database import create_db_engine, create_session_factory
+from tachibou.dependencies import DbSession
 from tachibou.migrate import upgrade_database
 
 
@@ -62,16 +72,6 @@ async def lifespan(app: FastAPI):
         engine.dispose()
 
 
-def get_db(request: Request) -> Iterator[Session]:
-    session = request.app.state.session_factory()
-    try:
-        yield session
-    finally:
-        session.close()
-
-
-DbSession = Annotated[Session, Depends(get_db)]
-
 router = APIRouter(prefix="/api")
 
 
@@ -91,6 +91,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(router)
+    app.include_router(automation_router)
+    app.add_exception_handler(RegistrationError, registration_error_handler)
+    app.add_exception_handler(NotFoundError, not_found_handler)
+    app.add_exception_handler(RequestValidationError, request_validation_handler)
     frontend = bundled_frontend_dir()
     if (frontend / "index.html").is_file():
         app.mount("/", SinglePageApplication(directory=frontend, html=True), name="frontend")
@@ -109,3 +113,20 @@ def create_app() -> FastAPI:
 
 def _looks_like_file(path: str) -> bool:
     return "." in Path(path).name
+
+
+def request_validation_handler(_request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, RequestValidationError):
+        raise exc
+    errors = []
+    for error in exc.errors():
+        location = [str(part) for part in error["loc"] if part not in {"body", "query", "path"}]
+        field = ".".join(location) if location else "request"
+        message = str(error["msg"])
+        if message.startswith("Value error, "):
+            message = message.removeprefix("Value error, ")
+        errors.append({"field": field, "message": message})
+    return JSONResponse(
+        status_code=422,
+        content={"message": "Check the highlighted fields.", "errors": errors},
+    )

@@ -18,7 +18,8 @@ It is not a workflow engine. Automations stay independent: they do not import a 
 - Keep future platform-specific code isolated. The domain model stays platform-independent.
 - Do not launch commands through a shell unless a later feature explicitly requires it.
 - Add a module when a feature needs it. Do not create empty packages for future use.
-- The first migration creates `app_metadata`. Add domain tables with the feature that uses them.
+- Persistence currently covers `app_metadata`, `automation`, and `file_reference`. Add schedule and execution tables with the features that use them.
+- Unregistering deletes the Tâchibou record only. Removing a Windows schedule belongs with the scheduling work, and a failure there must stop the deletion.
 
 ## Development commands
 
