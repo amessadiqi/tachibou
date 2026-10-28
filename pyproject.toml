@@ -40,6 +40,7 @@ dev = [
 
 [project.scripts]
 tachibou = "tachibou.cli:main"
+tachibou-runner = "tachibou.runner:main"
 
 [tool.hatch.version]
 path = "src/tachibou/__init__.py"

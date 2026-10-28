@@ -30,6 +30,18 @@ from tachibou.automations import (
 from tachibou.config import get_settings
 from tachibou.database import create_db_engine, create_session_factory
 from tachibou.dependencies import DbSession
+from tachibou.executions import (
+    AlreadyRunningError,
+    ExecutionNotFoundError,
+    OutputUnavailableError,
+    already_running_handler,
+    execution_not_found_handler,
+    output_unavailable_handler,
+    reconcile_stale_executions,
+)
+from tachibou.executions import (
+    router as execution_router,
+)
 from tachibou.migrate import upgrade_database
 
 
@@ -66,6 +78,11 @@ async def lifespan(app: FastAPI):
     engine = create_db_engine(settings)
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
+    session = app.state.session_factory()
+    try:
+        reconcile_stale_executions(session)
+    finally:
+        session.close()
     try:
         yield
     finally:
@@ -92,8 +109,12 @@ def create_app() -> FastAPI:
     )
     app.include_router(router)
     app.include_router(automation_router)
+    app.include_router(execution_router)
     app.add_exception_handler(RegistrationError, registration_error_handler)
     app.add_exception_handler(NotFoundError, not_found_handler)
+    app.add_exception_handler(AlreadyRunningError, already_running_handler)
+    app.add_exception_handler(ExecutionNotFoundError, execution_not_found_handler)
+    app.add_exception_handler(OutputUnavailableError, output_unavailable_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
     frontend = bundled_frontend_dir()
     if (frontend / "index.html").is_file():

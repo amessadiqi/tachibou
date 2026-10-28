@@ -21,6 +21,19 @@ export type FileReferenceInput = {
   label: string | null;
 };
 
+export type ExecutionStatus = "running" | "succeeded" | "failed" | "interrupted";
+
+export type TriggerType = "manual" | "scheduled";
+
+export type ExecutionSummary = {
+  id: string;
+  status: ExecutionStatus;
+  trigger_type: TriggerType;
+  started_at: string;
+  ended_at: string | null;
+  exit_code: number | null;
+};
+
 export type Automation = {
   id: string;
   name: string;
@@ -35,6 +48,8 @@ export type Automation = {
   updated_at: string;
   configuration_errors: string[];
   file_references: FileReference[];
+  running: boolean;
+  latest_execution: ExecutionSummary | null;
 };
 
 export type AutomationInput = {
@@ -107,6 +122,93 @@ export async function createAutomation(input: AutomationInput): Promise<Automati
 
 export async function updateAutomation(id: string, input: AutomationInput): Promise<Automation> {
   return sendAutomation(`/api/automations/${encodeURIComponent(id)}`, "PUT", input);
+}
+
+export type Execution = ExecutionSummary & {
+  automation_id: string;
+  schedule_id: string | null;
+  duration_ms: number | null;
+  stdout_path: string | null;
+  stderr_path: string | null;
+  error_message: string | null;
+};
+
+export type ExecutionPage = {
+  items: Execution[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type ExecutionAccepted = {
+  id: string;
+  automation_id: string;
+  status: "running";
+};
+
+export type OutputStream = "stdout" | "stderr";
+
+export type OutputPage = {
+  stream: OutputStream;
+  offset: number;
+  next_offset: number;
+  size: number;
+  eof: boolean;
+  content: string;
+};
+
+const OUTPUT_CHUNK = 32768;
+
+export async function runAutomation(id: string): Promise<ExecutionAccepted> {
+  const response = await fetch(`/api/automations/${encodeURIComponent(id)}/executions`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw await readError(response);
+  }
+  return (await response.json()) as ExecutionAccepted;
+}
+
+export async function fetchExecutions(
+  automationId: string,
+  offset: number,
+  signal?: AbortSignal,
+): Promise<ExecutionPage> {
+  const params = new URLSearchParams({ limit: "20", offset: String(offset) });
+  const response = await fetch(
+    `/api/automations/${encodeURIComponent(automationId)}/executions?${params}`,
+    { signal },
+  );
+  if (!response.ok) {
+    throw await readError(response);
+  }
+  return (await response.json()) as ExecutionPage;
+}
+
+export async function fetchExecution(id: string, signal?: AbortSignal): Promise<Execution> {
+  const response = await fetch(`/api/executions/${encodeURIComponent(id)}`, { signal });
+  if (!response.ok) {
+    throw await readError(response);
+  }
+  return (await response.json()) as Execution;
+}
+
+export async function fetchOutput(
+  id: string,
+  stream: OutputStream,
+  offset: number,
+  signal?: AbortSignal,
+): Promise<OutputPage> {
+  const params = new URLSearchParams({
+    stream,
+    offset: String(offset),
+    limit: String(OUTPUT_CHUNK),
+  });
+  const response = await fetch(`/api/executions/${encodeURIComponent(id)}/output?${params}`, { signal });
+  if (!response.ok) {
+    throw await readError(response);
+  }
+  return (await response.json()) as OutputPage;
 }
 
 export async function deleteAutomation(id: string): Promise<void> {

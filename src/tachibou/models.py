@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from tachibou.database import Base
@@ -37,6 +37,11 @@ class Automation(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    executions: Mapped[list[Execution]] = relationship(
+        back_populates="automation",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class FileReference(Base):
@@ -53,3 +58,35 @@ class FileReference(Base):
     label: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     automation: Mapped[Automation] = relationship(back_populates="file_references")
+
+
+class Execution(Base):
+    __tablename__ = "execution"
+    __table_args__ = (
+        Index("ix_execution_automation_id_started_at", "automation_id", "started_at"),
+        Index(
+            "uq_execution_one_running",
+            "automation_id",
+            unique=True,
+            sqlite_where=text("status = 'running'"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    automation_id: Mapped[str] = mapped_column(
+        ForeignKey("automation.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # Kept for the runner contract. The schedule table arrives with scheduling.
+    schedule_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    trigger_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    stdout_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    stderr_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    automation: Mapped[Automation] = relationship(back_populates="executions")

@@ -4,6 +4,7 @@ import { fetchHealth, toMessage, type Health } from "./api";
 import { NestMark } from "./components/NestMark";
 import { AutomationDetail } from "./pages/AutomationDetail";
 import { AutomationList } from "./pages/AutomationList";
+import { ExecutionDetail } from "./pages/ExecutionDetail";
 import { RegisterAutomation } from "./pages/RegisterAutomation";
 
 export function App() {
@@ -15,6 +16,7 @@ export function App() {
           <Route path="/" element={<AutomationList />} />
           <Route path="/automations/new" element={<RegisterAutomation />} />
           <Route path="/automations/:automationId" element={<AutomationDetail />} />
+          <Route path="/automations/:automationId/executions/:executionId" element={<ExecutionDetail />} />
         </Routes>
         <footer className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-8 text-sm text-ink/60">
           <p>Runs on this computer.</p>

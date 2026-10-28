@@ -21,11 +21,17 @@ const automation = {
 
 describe("AutomationDetail", () => {
   it("asks for confirmation before unregistering", async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (input: RequestInfo, init?: RequestInit) => {
       if (init?.method === "DELETE") {
         return { ok: true };
       }
-      return { ok: true, json: async () => automation };
+      if (String(input).includes("/executions")) {
+        return { ok: true, json: async () => ({ items: [], total: 0, limit: 20, offset: 0 }) };
+      }
+      return {
+        ok: true,
+        json: async () => ({ ...automation, running: false, latest_execution: null }),
+      };
     });
     vi.stubGlobal("fetch", fetchMock);
 

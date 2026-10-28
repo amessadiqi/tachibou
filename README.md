@@ -8,23 +8,23 @@ Tâchibou does not replace those automations or orchestrate workflows between th
 
 ## Current development status
 
-Version 0.1 is in early development. You can register automations that already exist on this computer, edit their settings, and unregister them without changing their files.
+Version 0.1 is in early development. You can register automations that already exist on this computer, run them manually, and review what happened without changing their files.
 
 What works:
 
 - An installable `tachibou` command and a local FastAPI service bound to `127.0.0.1`
-- A React interface for the automation list, registration, and detail page
+- A React interface for the automation list, registration, detail, and execution pages
 - SQLite persistence with Alembic migrations
 - Validation for required fields, with a clear report when an executable, working directory, or referenced file cannot be found
+- Manual execution through the `tachibou-runner` command, including captured output and execution history
+
+`tachibou-runner run <automation-id> --trigger manual` runs one registered automation without the web server. Give it `--trigger scheduled --schedule-id <schedule-id>` when a schedule starts it. The runner does not use a shell: register `powershell` or `cmd` as the executable when a script needs one.
 
 Windows is the intended runtime. The current build also runs on other systems so it can be developed and tested before Task Scheduler integration.
 
 These capabilities are planned and are not implemented yet:
 
-- Manual execution and captured logs
-- Execution history
 - Windows Task Scheduler integration
-- A standalone runner for scheduled executions
 
 ## Planned capabilities
 

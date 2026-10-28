@@ -14,12 +14,12 @@ It is not a workflow engine. Automations stay independent: they do not import a 
 - SQLite, SQLAlchemy, and Alembic handle persistence. The database file lives in the application data directory, outside the repository.
 - The production frontend is compiled into the Python wheel and served by FastAPI. Node.js is for development and builds only.
 - Bind to `127.0.0.1` by default. Do not add accounts, remote workers, cloud services, or a custom scheduling engine.
-- Windows Task Scheduler and the standalone runner come later. Do not add them while implementing an unrelated change.
+- The standalone runner records executions without the web server. Windows Task Scheduler comes later. Do not add scheduling while implementing an unrelated change.
 - Keep future platform-specific code isolated. The domain model stays platform-independent.
 - Do not launch commands through a shell unless a later feature explicitly requires it.
 - Add a module when a feature needs it. Do not create empty packages for future use.
-- Persistence currently covers `app_metadata`, `automation`, and `file_reference`. Add schedule and execution tables with the features that use them.
-- Unregistering deletes the Tâchibou record only. Removing a Windows schedule belongs with the scheduling work, and a failure there must stop the deletion.
+- Persistence currently covers `app_metadata`, `automation`, `file_reference`, and `execution`. Add the schedule table with scheduling. Captured output lives in files under the data directory, not in SQLite.
+- Unregistering deletes the Tâchibou record and its execution history. It does not change project files. Removing a Windows schedule belongs with the scheduling work, and a failure there must stop the deletion.
 
 ## Development commands
 

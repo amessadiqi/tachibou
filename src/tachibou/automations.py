@@ -1,8 +1,8 @@
 """Automation registration.
 
 Registration stores a reference to an existing project. It does not copy or
-modify project files. Schedules do not exist yet, so unregistering removes
-only the Tâchibou record.
+modify project files. Unregistering removes the Tâchibou record and its
+execution history. Schedule removal belongs with scheduling.
 """
 
 from __future__ import annotations
@@ -21,7 +21,9 @@ from sqlalchemy.orm import Session, selectinload
 from starlette.requests import Request
 
 from tachibou.dependencies import DbSession
-from tachibou.models import Automation, FileReference
+from tachibou.executions import AutomationActivity, ExecutionSummary, activity_for, summarize
+from tachibou.models import Automation, Execution, FileReference
+from tachibou.runner import remove_execution_files
 
 FileType = Literal["configuration", "documentation", "log"]
 _FILE_TYPE_ORDER = {"configuration": 0, "documentation": 1, "log": 2}
@@ -93,6 +95,8 @@ class AutomationOut(BaseModel):
     updated_at: datetime
     configuration_errors: list[str]
     file_references: list[FileReferenceOut]
+    running: bool
+    latest_execution: ExecutionSummary | None
 
 
 router = APIRouter(prefix="/api", tags=["automations"])
@@ -109,7 +113,7 @@ def list_automations(db: DbSession, search: str = "") -> list[AutomationOut]:
     if needle:
         statement = statement.where(func.lower(Automation.name).contains(needle))
     automations = db.scalars(statement).all()
-    return [_to_schema(automation) for automation in automations]
+    return _present_many(db, automations)
 
 
 @router.post("/automations", response_model=AutomationOut, status_code=201)
@@ -133,12 +137,12 @@ def create_automation(payload: AutomationWrite, db: DbSession) -> AutomationOut:
     db.add(automation)
     db.commit()
     db.refresh(automation)
-    return _to_schema(automation)
+    return _present(db, automation)
 
 
 @router.get("/automations/{automation_id}", response_model=AutomationOut)
 def get_automation(automation_id: str, db: DbSession) -> AutomationOut:
-    return _to_schema(_get(db, automation_id))
+    return _present(db, _get(db, automation_id))
 
 
 @router.put("/automations/{automation_id}", response_model=AutomationOut)
@@ -157,14 +161,18 @@ def update_automation(automation_id: str, payload: AutomationWrite, db: DbSessio
     _replace_references(automation, cleaned.file_references)
     db.commit()
     db.refresh(automation)
-    return _to_schema(automation)
+    return _present(db, automation)
 
 
 @router.delete("/automations/{automation_id}", status_code=204)
 def delete_automation(automation_id: str, db: DbSession) -> Response:
     automation = _get(db, automation_id)
+    execution_ids = list(
+        db.scalars(select(Execution.id).where(Execution.automation_id == automation.id)).all()
+    )
     db.delete(automation)
     db.commit()
+    remove_execution_files(execution_ids)
     return Response(status_code=204)
 
 
@@ -332,7 +340,16 @@ def _get(db: Session, automation_id: str) -> Automation:
     return automation
 
 
-def _to_schema(automation: Automation) -> AutomationOut:
+def _present(db: Session, automation: Automation) -> AutomationOut:
+    return _to_schema(automation, activity_for(db, [automation.id])[automation.id])
+
+
+def _present_many(db: Session, automations: list[Automation]) -> list[AutomationOut]:
+    activities = activity_for(db, [automation.id for automation in automations])
+    return [_to_schema(automation, activities[automation.id]) for automation in automations]
+
+
+def _to_schema(automation: Automation, activity: AutomationActivity) -> AutomationOut:
     references = sorted(
         automation.file_references,
         key=lambda reference: (
@@ -354,6 +371,8 @@ def _to_schema(automation: Automation) -> AutomationOut:
         created_at=automation.created_at,
         updated_at=automation.updated_at,
         configuration_errors=_configuration_errors(automation),
+        running=activity.running,
+        latest_execution=None if activity.latest is None else summarize(activity.latest),
         file_references=[
             FileReferenceOut(
                 id=reference.id,

@@ -1,4 +1,4 @@
-"""Runtime configuration shared by the server and future runner."""
+"""Runtime configuration shared by the server and the runner."""
 
 from __future__ import annotations
 

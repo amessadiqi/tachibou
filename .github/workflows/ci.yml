@@ -78,7 +78,7 @@ jobs:
           venv="${RUNNER_TEMP}/tachibou-venv"
           "${venv}/bin/python" -m pip install --disable-pip-version-check dist/*.whl
           test "$("${venv}/bin/tachibou" version)" = "0.1.0"
-          "${venv}/bin/python" -c "from functools import reduce; from importlib.resources import files; root = files('tachibou'); required = ['static/index.html', 'migrations/env.py', 'migrations/versions/0001_initial.py', 'migrations/script.py.mako']; missing = [item for item in required if not reduce(lambda node, part: node.joinpath(part), item.split('/'), root).is_file()]; assert not missing, 'Missing packaged files: ' + ', '.join(missing); print('Packaged files ok')"
+          "${venv}/bin/python" -c "from functools import reduce; from importlib.resources import files; root = files('tachibou'); required = ['static/index.html', 'migrations/env.py', 'migrations/versions/0001_initial.py', 'migrations/versions/0003_executions.py', 'migrations/script.py.mako']; missing = [item for item in required if not reduce(lambda node, part: node.joinpath(part), item.split('/'), root).is_file()]; assert not missing, 'Missing packaged files: ' + ', '.join(missing); print('Packaged files ok')"
           export TACHIBOU_DATA_DIR="${RUNNER_TEMP}/tachibou-data"
           "${venv}/bin/tachibou" start --port 8741 >"${RUNNER_TEMP}/tachibou-server.log" 2>&1 &
           pid=$!
